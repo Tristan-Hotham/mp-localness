@@ -1,0 +1,671 @@
+<!doctype html>
+<html lang="en-GB">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>Born and Bred?</title>
+<meta name="description" content="How local are MPs? Where {{p.n_people}} MPs returned at {{n_elections}} UK general elections from 1832 to 2024 were born, measured against the seats they won.">
+<meta property="og:title" content="Born and bred? How local are MPs, 1832 to 2024">
+<meta property="og:description" content="For 170 years about a quarter of MPs were born in the county they represented. Since 2010 that has climbed: {{p.sc_2024}}% in 2024.">
+<meta property="og:image" content="https://maps.tristanhotham.com/mp-localness/header.png">
+<meta property="og:url" content="https://maps.tristanhotham.com/mp-localness/">
+<meta name="twitter:card" content="summary_large_image">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,600;9..144,800;9..144,900&family=IBM+Plex+Mono:wght@400;500&family=Source+Serif+4:ital,opsz,wght@0,8..60,400;0,8..60,600;1,8..60,400&display=swap">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css">
+<style>
+/* Parchment and hedgerow: a teal for "close to home", ochre and rust for "far away", violet for abroad. */
+:root{
+  --bg:#F4F0E6; --panel:#E9E4D6; --fg:#1D1C19; --muted:#67625A; --rule:#D8D1C2; --card:#FBF9F3; --border:#C6BFAE;
+  --hot:#0F6B5C; --hot2:#0A4D42; --gold:#B5702A; --land:#E6E0D1; --sea:#D7DFE0; --none:#ADA799;
+  --display:"Fraunces",Georgia,"Times New Roman",serif;
+  --body:"Source Serif 4",Georgia,"Times New Roman",serif;
+  --mono:"IBM Plex Mono",ui-monospace,Menlo,Consolas,monospace;
+}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){
+  --bg:#141513; --panel:#1E201D; --fg:#ECE9E1; --muted:#A4A097; --rule:#33352F; --card:#20221F; --border:#474A42;
+  --hot:#4FC3A6; --hot2:#8FE0CC; --gold:#E2A45A; --land:#2A2C28; --sea:#191C1D; --none:#5F625A; color-scheme:dark}}
+:root[data-theme="dark"]{
+  --bg:#141513; --panel:#1E201D; --fg:#ECE9E1; --muted:#A4A097; --rule:#33352F; --card:#20221F; --border:#474A42;
+  --hot:#4FC3A6; --hot2:#8FE0CC; --gold:#E2A45A; --land:#2A2C28; --sea:#191C1D; --none:#5F625A; color-scheme:dark}
+*,*::before,*::after{box-sizing:border-box}
+html{-webkit-text-size-adjust:100%;overflow-x:clip}
+body{margin:0;background:var(--bg);color:var(--fg);font:400 18px/1.62 var(--body);
+  padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));overflow-x:hidden}
+.wrap{max-width:700px;margin:0 auto;padding-block:28px 64px}
+.wrap .bleed{width:min(1120px,calc(100vw - 32px));margin-left:calc((100% - min(1120px,100vw - 32px))/2);margin-right:0}
+a{color:inherit;text-decoration-color:var(--hot);text-underline-offset:3px}
+.kicker{font:500 12px/1 var(--mono);letter-spacing:.12em;text-transform:uppercase;color:var(--muted);display:flex;gap:10px;flex-wrap:wrap;align-items:center}
+.kicker b{background:var(--hot);color:var(--bg);padding:5px 8px;font-weight:500}
+header.hero{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:12px 24px;align-items:end;border-bottom:6px double var(--fg);padding-bottom:22px;margin-top:18px}
+h1{font:900 clamp(46px,11.5vw,100px)/.9 var(--display);letter-spacing:-.02em;margin:0;text-wrap:balance}
+h1 em{font-style:normal;color:var(--hot)}
+.mark{width:clamp(78px,17vw,140px);height:auto;display:block}
+.dek{grid-column:1/-1;font-size:21px;line-height:1.42;margin:8px 0 0;max-width:48ch}
+.byline{font:400 13px/1.4 var(--mono);color:var(--muted);margin-top:14px}
+h2{font:800 34px/1.04 var(--display);letter-spacing:-.01em;margin:52px 0 10px;text-wrap:balance}
+h2 .n{font:500 13px/1 var(--mono);color:var(--hot);display:block;letter-spacing:.1em;margin-bottom:10px}
+h3{font:600 20px/1.25 var(--display);margin:28px 0 6px}
+p{margin:0 0 16px}
+.lede::first-letter{font:900 72px/.8 var(--display);float:left;margin:6px 10px 0 0;color:var(--hot)}
+.stats{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:1px;background:var(--rule);border:1px solid var(--rule);margin:26px 0 8px}
+.stats div{background:var(--card);padding:14px 12px}
+.stats b{display:block;font:900 clamp(26px,5.6vw,38px)/1 var(--display)}
+.stats b.h{color:var(--hot)}
+.stats span{font:400 12px/1.35 var(--mono);color:var(--muted);display:block;margin-top:6px}
+@media (max-width:600px){.stats{grid-template-columns:repeat(2,minmax(0,1fr))}}
+.figure{margin:26px 0 30px}
+.fig-h{font:600 19px/1.25 var(--display);margin:0 0 4px}
+.fig-sub{font:400 13px/1.45 var(--mono);color:var(--muted);margin:0 0 12px}
+.src{font:400 12px/1.45 var(--mono);color:var(--muted);margin-top:10px}
+.chart{width:100%;position:relative}
+.chart svg{display:block;width:100%;height:auto;overflow:visible}
+svg text{font-family:var(--mono);fill:var(--fg)}
+.lab{font-size:12px}.lab.m{fill:var(--muted)}.lab.b{font-weight:500}.lab.s{font-size:11px}
+.tip{position:absolute;pointer-events:none;background:var(--fg);color:var(--bg);font:400 12px/1.45 var(--mono);padding:8px 10px;border-radius:3px;max-width:280px;z-index:1000;transform:translate(-50%,calc(-100% - 12px));display:none}
+.tip b{font-weight:500}
+.btn{font:500 12px/1 var(--mono);background:var(--card);color:var(--fg);border:1px solid var(--border);border-radius:3px;padding:8px 10px;cursor:pointer;min-height:36px;white-space:nowrap}
+.btn[aria-pressed="true"]{background:var(--fg);color:var(--bg);border-color:var(--fg)}
+.btn:focus-visible,input:focus-visible,select:focus-visible,summary:focus-visible{outline:2px solid var(--hot);outline-offset:2px}
+.seg{display:inline-flex;border:1px solid var(--border);border-radius:3px;overflow:hidden;flex:0 0 auto}
+.seg .btn{border:0;border-radius:0;border-right:1px solid var(--border)}
+.seg .btn:last-child{border-right:0}
+select{font:500 12px/1 var(--mono);background:var(--card);color:var(--fg);border:1px solid var(--border);border-radius:3px;padding:8px 6px;min-height:36px;max-width:100%}
+.ctl{display:flex;gap:8px;align-items:center;flex-wrap:nowrap;overflow-x:auto;scrollbar-width:thin;margin:0 0 8px;padding-bottom:2px;-webkit-overflow-scrolling:touch}
+.ctl::-webkit-scrollbar{height:4px}.ctl::-webkit-scrollbar-thumb{background:var(--border)}
+.ctl .lbl{font:400 11px/1 var(--mono);color:var(--muted);flex:0 0 auto}
+.timebar{display:flex;gap:10px;align-items:center;margin:0 0 8px}
+.timebar input[type=range]{flex:1 1 auto;min-width:0;accent-color:var(--hot);height:28px}
+.when{font:800 26px/1 var(--display);min-width:5.4ch;white-space:nowrap}
+.when small{display:block;font:400 11px/1.3 var(--mono);color:var(--muted);margin-top:3px;white-space:nowrap}
+.searchbox{position:relative;flex:1 0 170px;min-width:170px}
+input[type=search]{font:400 14px/1 var(--mono);background:var(--card);color:var(--fg);border:1px solid var(--border);border-radius:3px;padding:9px 10px;min-height:36px;width:100%}
+.suggest{position:fixed;margin:2px 0 0;padding:0;list-style:none;background:var(--card);border:1px solid var(--border);z-index:1001;font:400 13px/1.3 var(--mono);display:none;max-height:300px;overflow:auto}
+.suggest li{padding:8px 10px;cursor:pointer;border-bottom:1px solid var(--rule)}
+.suggest li span{color:var(--muted)}
+.suggest li[aria-selected="true"],.suggest li:hover{background:var(--panel)}
+#lmap{overflow:hidden;contain:paint;height:680px;border:1px solid var(--border);background:var(--sea);border-radius:2px}
+@media (max-width:600px){#lmap{height:min(60vh,500px)} .when{font-size:22px} body{font-size:17px}}
+.leaflet-container{font:400 12px/1.4 var(--mono);background:var(--sea)}
+.leaflet-bar a,.leaflet-bar a:hover{background:var(--card);color:var(--fg);border-bottom-color:var(--border)}
+.leaflet-control-attribution{background:color-mix(in srgb,var(--card) 85%,transparent)!important;color:var(--muted)}
+.leaflet-control-attribution a{color:var(--fg)}
+.lyrBtn{background:var(--card);color:var(--fg);border:1px solid var(--border);border-radius:3px;font:600 12px/1 var(--mono);padding:8px 10px;cursor:pointer;box-shadow:0 1px 4px rgba(0,0,0,.12)}
+.lyrBtn[aria-expanded="true"]{background:var(--fg);color:var(--bg)}
+.lyrPanel{background:var(--card);border:1px solid var(--border);border-radius:3px;margin-top:6px;padding:10px 12px;width:236px;font:400 12px/1.4 var(--mono);box-shadow:0 2px 10px rgba(0,0,0,.18)}
+.lyrPanel .row{display:grid;grid-template-columns:1fr;gap:3px;margin-bottom:9px}
+.lyrPanel label{display:flex;gap:6px;align-items:center;cursor:pointer}
+.lyrPanel .sub{display:flex;gap:6px;align-items:center;padding-left:22px;color:var(--muted)}
+.lyrPanel .sub input[type=range]{flex:1;accent-color:var(--hot)}
+.lyrPanel select{min-height:28px;padding:4px;max-width:140px}
+.lyrPanel .reset{font:500 11px/1 var(--mono);background:none;border:1px solid var(--border);color:var(--fg);padding:6px 8px;border-radius:3px;cursor:pointer}
+.city{font:500 11px/1 var(--mono);color:var(--fg);white-space:nowrap;text-shadow:0 0 3px var(--bg),0 0 3px var(--bg),0 0 2px var(--bg)}
+.city i{display:inline-block;width:5px;height:5px;border-radius:50%;background:var(--fg);margin-right:4px;vertical-align:1px}
+.city.r2{font-size:10px;color:var(--muted)}.city.r2 i{width:4px;height:4px;background:var(--muted)}
+.bpl{font:600 12px/1 var(--mono);color:var(--fg);white-space:nowrap;text-shadow:0 0 3px var(--bg),0 0 3px var(--bg),0 0 3px var(--bg)}
+.legend{display:flex;gap:4px 12px;flex-wrap:wrap;font:400 12px/1.3 var(--mono);color:var(--muted);margin-top:8px}
+.legend i{display:inline-block;width:11px;height:11px;border-radius:50%;margin-right:5px;vertical-align:-1px}
+.legend i.o{background:none!important;border:2px solid var(--none)}
+.legend b{color:var(--fg);font-weight:500}
+.sumline{font:400 13px/1.45 var(--mono);color:var(--muted);margin:6px 0 0}
+.sumline b{color:var(--fg);font-weight:500}
+#info{background:var(--card);border:1px solid var(--border);border-top:4px solid var(--hot);padding:14px 16px;margin-top:12px;font:400 13px/1.5 var(--mono);min-height:60px}
+#info .t{font:600 21px/1.2 var(--display);margin:0 0 2px}
+#info .c{color:var(--muted);margin-bottom:8px}
+#info table{width:100%;border-collapse:collapse;margin:6px 0}
+#info td{padding:4px 6px 4px 0;border-bottom:1px solid var(--rule);vertical-align:top}
+#info td.num{text-align:right;white-space:nowrap}
+#info tr.cur td{font-weight:500;background:var(--panel)}
+#info .sw{display:inline-block;width:10px;height:10px;border-radius:50%;margin-right:6px;vertical-align:0}
+#info .tw{overflow-x:auto;max-height:340px;overflow-y:auto}
+.strip{display:flex;gap:1px;margin:8px 0 2px}
+.strip div{height:26px;flex:1 1 0;cursor:pointer;position:relative;min-width:3px}
+.strip div.cur{outline:2px solid var(--fg);outline-offset:-1px;z-index:1}
+.stripax{display:flex;justify-content:space-between;font:400 11px/1.2 var(--mono);color:var(--muted)}
+.stories{display:flex;gap:8px;overflow-x:auto;padding:2px 0 8px;margin:6px 0 4px;scrollbar-width:thin}
+.stories button{flex:0 0 auto;text-align:left;font:400 12px/1.35 var(--mono);background:var(--card);color:var(--fg);border:1px solid var(--border);border-left:4px solid var(--hot);border-radius:3px;padding:8px 10px;cursor:pointer;max-width:220px;white-space:normal}
+.stories button b{display:block;font:600 15px/1.2 var(--display)}
+.pull{font:600 26px/1.25 var(--display);border-left:6px solid var(--hot);padding:4px 0 4px 18px;margin:30px 0}
+.note{background:var(--panel);border:1px solid var(--rule);padding:14px 16px;font-size:16px;margin:22px 0}
+.note h3{margin-top:0}
+.defs{display:grid;grid-template-columns:auto 1fr;gap:6px 14px;font-size:16px;margin:0}
+.defs dt{font:500 13px/1.6 var(--mono);color:var(--hot)}
+.defs dd{margin:0}
+table.t{width:100%;border-collapse:collapse;font:400 13px/1.35 var(--mono)}
+table.t th{text-align:left;font-weight:500;color:var(--muted);border-bottom:2px solid var(--fg);padding:6px 8px 6px 0}
+table.t td{border-bottom:1px solid var(--rule);padding:7px 8px 7px 0;vertical-align:top}
+table.t td.num,table.t th.num{text-align:right;white-space:nowrap}
+.tablewrap{overflow-x:auto}
+.cta{display:flex;gap:10px;flex-wrap:wrap;margin:18px 0}
+.cta a{font:500 13px/1 var(--mono);text-decoration:none;border:1px solid var(--fg);padding:11px 14px;border-radius:3px}
+.cta a.p{background:var(--hot);border-color:var(--hot);color:var(--bg)}
+footer{border-top:6px double var(--fg);margin-top:56px;padding-top:16px;font:400 13px/1.55 var(--mono);color:var(--muted)}
+footer p{margin:0 0 10px}
+.theme{position:fixed;right:12px;bottom:12px;z-index:1002}
+ul.src-list{font-size:16px;padding-left:20px}
+ul.src-list li{margin-bottom:8px}
+@media print{.theme,.ctl,.timebar,.stories{display:none}}
+</style>
+</head>
+<body>
+<div class="wrap">
+<div class="kicker"><b>Data study</b><span>Parliament · 1832 to 2024</span><span>2026</span></div>
+<header class="hero">
+  <h1>Born <em>and bred?</em></h1>
+  <svg class="mark" viewBox="0 0 120 120" aria-hidden="true"><path d="M30 92 C 40 40, 80 40, 92 30" fill="none" stroke="var(--gold)" stroke-width="4" stroke-dasharray="6 6"/><circle cx="30" cy="92" r="11" fill="var(--hot)"/><path d="M92 14 l14 16 h-28 z" fill="currentColor"/><rect x="80" y="30" width="24" height="18" fill="currentColor"/><rect x="88" y="36" width="8" height="12" fill="var(--bg)"/></svg>
+  <p class="dek">How local are MPs? Where {{p.n_people}} MPs returned at {{n_elections}} UK general elections from 1832 to 2024 were born, set against the seats they won.</p>
+</header>
+<p class="byline">Dr Tristan Hotham · Independent researcher · 2026</p>
+
+<p class="lede">Candidates love to tell voters they are local, and surveys suggest voters like hearing it. But how often have MPs actually come from the places they represent? I took every member returned at a general election since the Great Reform Act, found where each was born, and measured the distance from that birthplace to the seat. For most of the last two centuries the answer barely moved: about a quarter of MPs were born in the county they sat for. Then, after 2010, it started to climb.</p>
+
+<div class="stats">
+  <div><b class="h">{{p.sc_flat}}</b><span>of MPs born in their seat's county, at every election from 1832 to 2005</span></div>
+  <div><b>{{p.sc_2024}}%</b><span>in 2024 (on a {{p.cov_2024}}% sample; see the caveat)</span></div>
+  <div><b>{{p.med_2010}} to {{p.med_2024}} km</b><span>median distance from birthplace to seat, 2010 to 2024</span></div>
+  <div><b>{{p.n_rows}}</b><span>MPs returned at {{n_elections}} elections; {{overall.coverage}}% with a known birthplace</span></div>
+</div>
+
+<div class="note">
+<h3>What "local" means here</h3>
+<dl class="defs">
+<dt>Distance</dt><dd>Straight-line kilometres from the MP's place of birth to a point for the seat.</dd>
+<dt>Within 25 km</dt><dd>Born within 25 km of that point.</dd>
+<dt>Same county</dt><dd>Birthplace and seat point fall in the same county, using one fixed modern map for all years (ceremonial counties in England, preserved counties in Wales, council areas in Scotland, Northern Ireland as one unit). Seats in what is now the Republic of Ireland are left out of this measure.</dd>
+<dt>Born in London</dt><dd>Birthplace inside today's Greater London.</dd>
+<dt>Born abroad</dt><dd>Birthplace outside the United Kingdom, Ireland, the Isle of Man and the Channel Islands.</dd>
+</dl>
+<p style="margin:10px 0 0">The unit is an MP returned at a general election: someone who sat for three Parliaments counts three times, as they did in the House. Shares are of MPs whose birthplace I could place; how many that is changes a lot over time (section 07).</p>
+</div>
+
+<section class="bleed" aria-labelledby="h-map">
+<h2 id="h-map"><span class="n">01 · The map</span>Every seat, every election, every birthplace</h2>
+<p style="max-width:700px">Each dot is a seat at the chosen election, coloured by how far its MP was born from it. Tap a dot to draw the line home and to see every member the seat has returned. Turn on "Lines" to see the whole House at once.</p>
+<div class="mapbox">
+  <div class="timebar">
+    <button class="btn" id="play" aria-label="Play through the elections">▶ Play</button>
+    <button class="btn" id="prev" aria-label="Previous election">‹</button>
+    <input type="range" id="yr" min="0" max="48" step="1" value="48" aria-label="Election">
+    <button class="btn" id="next" aria-label="Next election">›</button>
+    <div class="when" id="when" aria-live="polite">2024</div>
+  </div>
+  <div class="ctl">
+    <span class="lbl">Colour</span>
+    <div class="seg" role="group" aria-label="Colour dots by">
+      <button class="btn" data-mode="dist" aria-pressed="true">Distance</button>
+      <button class="btn" data-mode="county" aria-pressed="false">Same county</button>
+      <button class="btn" data-mode="party" aria-pressed="false">Party</button>
+    </div>
+    <button class="btn" id="lines" aria-pressed="false">Lines</button>
+    <div class="searchbox">
+      <input type="search" id="q" placeholder="Find a town" autocomplete="off" role="combobox" aria-expanded="false" aria-controls="sug" aria-label="Find a town">
+    </div>
+  </div>
+  <ul class="suggest" id="sug" role="listbox"></ul>
+  <div class="stories" id="stories" aria-label="Stories"></div>
+  <div id="lmap" role="region" aria-label="Map of seats coloured by how far each MP was born from the seat"></div>
+  <div class="legend" id="legend"></div>
+  <p class="sumline" id="sumline"></p>
+  <div id="info" aria-live="polite">Tap or click a dot to see where its MP was born.</div>
+</div>
+</section>
+
+<h2><span class="n">02 · The long view</span>A quarter, for 170 years</h2>
+<p>At the first reformed election in 1832, {{h.1832.same_county}}% of the MPs I can place were born in their seat's county. At every general election from then until 2005 the figure stayed between {{long_flat.same_county_min}}% and {{long_flat.same_county_max}}%. Through the Liberal collapse, the rise of Labour, universal suffrage and the arrival of women in the House, the share of MPs with local roots hardly changed.</p>
+<p>Then it moved. From {{h.2010.same_county}}% in 2010 it rose to {{h.2017.same_county}}% in 2017, {{h.2019.same_county}}% in 2019 and {{h.2024.same_county}}% in 2024. Born within 25 km of the seat went from {{h.2010.local25}}% to {{h.2024.local25}}%, and the median MP's birthplace moved from {{h.2010.median_km}} km to {{h.2024.median_km}} km away.</p>
+<div class="figure">
+  <p class="fig-h">Share of MPs born in their seat's county, and within 25 km of it</p>
+  <p class="fig-sub">Every general election, 1832 to 2024. Shaded: the range the county share could take if every MP without a known birthplace were local, or none were.</p>
+  <div class="chart" id="c_long"></div>
+  <div class="legend" id="c_long_leg"></div>
+</div>
+<p>The shaded band is the honest caveat. In the nineteenth century most birthplaces are missing, so the band is wide; from the 1990s it is narrow and the rise since 2010 sits well outside the old range. The 2024 point is the least certain recent one: many new MPs did not yet have a recorded birthplace when I gathered the data, so the 2024 county share could lie anywhere from {{county_bounds.2024.low}}% to {{county_bounds.2024.high}}%.</p>
+
+<h2><span class="n">03 · New faces</span>It is the newcomers who changed</h2>
+<p>Counting every MP at every election mixes long-serving members with new ones. Counting each person once, at the first general election they won, shows when the change came in. Of new MPs first elected from 1983 to 2005, {{by_era_new.4.local25}}% were born within 25 km of their seat. Of those first elected from 2010 to 2019 it was {{by_era_new.5.local25}}%, and in 2024 {{by_era_new.6.local25}}% (with only {{by_era_new.6.coverage}}% of that intake placed so far).</p>
+<div class="figure">
+  <p class="fig-h">New MPs born within 25 km of the seat they first won</p>
+  <p class="fig-sub">Each person counted once, at their first general election win. Grey figures: the share of that intake with a known birthplace.</p>
+  <div class="chart" id="c_new"></div>
+</div>
+<div class="figure">
+  <p class="fig-h">How far from home: all MPs by distance band</p>
+  <p class="fig-sub">MPs with a known birthplace, by era of the election.</p>
+  <div class="chart" id="c_bands"></div>
+  <div class="legend" id="c_bands_leg"></div>
+</div>
+
+<h2><span class="n">04 · Parties</span>Labour the most local, and both big parties moved after 2005</h2>
+<p>Labour MPs have been more often born in their seat's county than Conservative MPs in every era since Labour first won seats in numbers; against the Liberals the order swapped back and forth until 2010. From 1997 to 2024, {{p.lab97.same_county}}% of Labour MPs I can place were born in their seat's county, against {{p.con97.same_county}}% of Conservatives and {{p.lib97.same_county}}% of Liberal Democrats; SNP MPs were at {{p.snp97.same_county}}%. Part of the gap may be geography, since the parties win different kinds of seats, and I have not adjusted for that.</p>
+<p>The rise since 2010 is not one party's story. The Conservative share went from {{p.con8305.same_county}}% (1983 to 2005) to {{p.con1019.same_county}}% (2010 to 2019); Labour's from {{p.lab8305.same_county}}% to {{p.lab1019.same_county}}%, and {{p.lab24.same_county}}% in 2024. The Liberal Democrat share stayed close to its long-run level. Part of the 2024 jump is about who won: Labour, the party with the most locally born MPs, took far more seats than in 2019.</p>
+<div class="figure">
+  <p class="fig-h">MPs born in their seat's county, by party family and era</p>
+  <p class="fig-sub">Liberal includes Whigs (to 1859) and Liberal Democrats. Only party and era groups with at least 30 placed MPs are shown.</p>
+  <div class="chart" id="c_party"></div>
+  <div class="legend" id="c_party_leg"></div>
+</div>
+
+<h2><span class="n">05 · Places</span>The North East picks its own; the Home Counties import</h2>
+<p>Since 2010 the regions differ more than the parties. In the North East, {{p.reg.North East.same_county}}% of MPs were born in their seat's county; in Scotland, {{p.reg.Scotland.local25}}% were born within 25 km of their seat. In the East of England only {{p.reg.East of England.same_county}}% were born in the county they represent, and {{p.reg.East of England.london}}% were born in London: the commuter belt elects people who grew up in the city next door.</p>
+<div class="figure">
+  <p class="fig-h">MPs born in their seat's county, and born in London, by region, 2010 to 2024</p>
+  <p class="fig-sub">Seats placed in English regions by their county; Northern Ireland counts as one county, so its figure is close to "born in Northern Ireland".</p>
+  <div class="chart" id="c_region"></div>
+  <div class="legend" id="c_region_leg"></div>
+</div>
+<p>The four nations have their own stories. Until the 2000s Welsh seats had the highest county shares in Great Britain, and the share of MPs for Welsh seats born in Wales has swung, from {{wales_born_wales.1832}}% in 1832 to {{wales_born_wales.1950}}% in 1950, {{wales_born_wales.2005}}% in 2005 and {{wales_born_wales.2024}}% in 2024. Scottish seats were mostly held by Scots in 1832 ({{scot_born_scot.1832}}%), less so in 1906 ({{scot_born_scot.1906}}%), and by {{scot_born_scot.2024}}% in 2024.</p>
+
+<h2><span class="n">06 · London and abroad</span>Fewer Londoners, a steady few from overseas</h2>
+<p>In the nineteenth century London supplied more than its share of MPs: {{h.1832.london}}% of those I can place in 1832 were born there. Since 1992 the figure has been between {{p.lon_min}}% and {{p.lon_max}}%. About one MP in twenty was born outside the British Isles ({{overall.abroad}}% across all elections). Of the {{abroad_people}} people in that group, {{abroad_groups.Europe}} were born in continental Europe, {{abroad_groups.South Asia}} in South Asia, {{p.ab_americas}} in the Americas, {{p.ab_aus}} in Australia and New Zealand and {{abroad_groups.Africa}} in Africa. Among those first elected before 1914, continental Europe ({{p.ab_eu_early}}) and South Asia ({{p.ab_sa_early}}) lead; among those first elected since 1983, South Asia ({{p.ab_sa_late}}) and continental Europe ({{p.ab_eu_late}}).</p>
+<div class="figure">
+  <p class="fig-h">MPs born in London and born abroad</p>
+  <p class="fig-sub">Share of MPs with a known birthplace, every general election.</p>
+  <div class="chart" id="c_lon"></div>
+  <div class="legend" id="c_lon_leg"></div>
+</div>
+
+<h2><span class="n">07 · Missing birthplaces</span>What the data can and cannot say</h2>
+<p>Birthplaces are well recorded for recent MPs and poorly for early ones. I could place {{h.1832.coverage}}% of the MPs returned in 1832, {{h.1950.coverage}}% in 1950 and between {{p.cov_min9719}}% and {{p.cov_max9719}}% from 1997 to 2019. For 2024 it is {{h.2024.coverage}}%: many members elected for the first time that year have no birthplace in Wikidata or Wikipedia yet.</p>
+<div class="figure">
+  <p class="fig-h">Share of MPs with a birthplace I could place</p>
+  <p class="fig-sub">Every general election, 1832 to 2024.</p>
+  <div class="chart" id="c_cov"></div>
+</div>
+<p>If the MPs whose birthplace is missing were more or less local than the rest, the early figures are biased, and nothing in the data can rule that out. That is why the long-view chart shows the full range alongside the point estimate. The comparison that matters most, the rise since 2010, rests on elections where nine in ten MPs are placed.</p>
+
+<h2><span class="n">08 · How I did this</span>Methods and caveats</h2>
+<p><b>Who.</b> Every member returned at a UK general election from 1832 to 2024, from Wikidata: each MP's "position held" statements for the Parliaments of the United Kingdom, with the constituency and the general election they were elected at. That gives {{p.n_rows}} returns of {{p.n_people}} people at {{n_elections}} elections. Members who entered at by-elections are left out unless they were later returned at a general election. Party families come from the results file of the sister project <a href="https://maps.tristanhotham.com/elections-since-1832/">Who won here?</a> (UK Parliament and House of Commons Library data), matched to each MP by seat, election and surname; {{p.fam_unknown}} returns have no party family.</p>
+<p><b>Where born.</b> Wikidata's place of birth with its coordinates for {{p.src_w}} people. Where Wikidata has none, the first linked place in the "birth place" line of the English Wikipedia infobox ({{p.src_i}} people), or failing that the first linked place after the word "born" in the article ({{p.src_t}} people). On a random sample of 400 MPs who do have a Wikidata birthplace, the infobox method landed within 5 km of it {{validation.infobox.within5}}% of the time ({{validation.infobox.compared}} compared) and the article-text method {{validation.text.within5}}% ({{validation.text.compared}} compared). Birthplaces recorded only as a county or a country ({{n_people_coarse}} people, such as "Surrey" or "England") are too coarse for a distance and count as unknown. In all, {{n_people_known|int}} of {{p.n_people}} people ({{people_known_share}}%) have a placed birthplace.</p>
+<p><b>Where the seat is.</b> Constituencies are points, not boundaries: the constituency points of <a href="https://maps.tristanhotham.com/elections-since-1832/">Who won here?</a>, which use each seat's own Wikidata coordinates where they exist ({{seat_points.own|int}} of {{seat_points.items|int}} constituency items) and otherwise its town or county. For large county divisions a point can be tens of kilometres from where most voters lived, so distances for county seats are rougher than for boroughs; the county measure is less sensitive to this.</p>
+<p><b>Counties.</b> One modern county map for every year: a fixed yardstick, not the counties MPs themselves would have named. Scottish council areas are smaller than English counties, so "same county" is a stricter test in Scotland; Northern Ireland is one unit, so it is a looser one there.</p>
+<p><b>What it does not measure.</b> Birthplace is not upbringing: someone born in a London hospital and raised in Lancashire counts as London-born. It says nothing about where MPs lived, worked or went to school before election, which is what many voters mean by local. Wikidata and Wikipedia are volunteer projects, and their coverage favours better-known MPs.</p>
+
+<h2><span class="n">09 · Sources</span>Data and licences</h2>
+<ul class="src-list">
+<li>Wikidata (members of each Parliament with constituency and election, places of birth, place coordinates and types), via the QLever endpoint, retrieved 29 October 2026. CC0.</li>
+<li>English Wikipedia, MP articles (infobox birth place and article text, only where Wikidata has no birthplace), retrieved 29 October 2026. CC BY-SA 4.0.</li>
+<li>UK Parliament Members API (<a href="https://members-api.parliament.uk/">members-api.parliament.uk</a>): the 650 current members, used to check the 2024 list. Open Parliament Licence v3.0.</li>
+<li>Constituency points, party families and nation outlines from <a href="https://maps.tristanhotham.com/elections-since-1832/">Who won here? Every UK general election since 1832</a> (<a href="https://doi.org/10.5281/zenodo.23761425">doi:10.5281/zenodo.23761425</a>), built from UK Parliament and House of Commons Library results (Open Parliament Licence v3.0), Wikidata, OS Open Names and GeoNames.</li>
+<li>County outlines: Office for National Statistics boundaries (Open Government Licence v3.0), as simplified for earlier projects. Contains OS data © Crown copyright and database right 2026.</li>
+<li>Base map and hill shading tiles © Esri.</li>
+</ul>
+<p>Sister projects: <a href="https://maps.tristanhotham.com/elections-since-1832/">Who won here?</a> maps every general election result since 1832, and <a href="https://maps.tristanhotham.com/hansard-places/">Mentioned in the House</a> counts which places MPs talk about in the Commons.</p>
+<div class="cta">
+  <a class="p" href="https://doi.org/10.5281/zenodo.23763155">Read the paper</a>
+  <a href="https://github.com/Tristan-Hotham/mp-localness">Data and code</a>
+  <a href="https://blog.tristanhotham.com/2026/10/29/mp-localness/">Blog post</a>
+  <a href="https://maps.tristanhotham.com/elections-since-1832/">Who won here?</a>
+</div>
+
+<footer>
+<p>Dr Tristan Hotham, Independent researcher. ORCID <a href="https://orcid.org/0000-0003-4931-9349">0000-0003-4931-9349</a>. Cite as: Hotham, T. (2026) Born and bred? How local are MPs, 1832 to 2024. <a href="https://doi.org/10.5281/zenodo.23763155">https://doi.org/10.5281/zenodo.23763155</a></p>
+<p>I wrote the text, with drafting and editing assistance from Claude (Anthropic), which also helped prepare the analysis code. I reviewed and checked all text and results.</p>
+<p>Data and text: CC BY-SA 4.0 (derived in part from Wikipedia). Code: MIT. Contains Parliamentary information licensed under the Open Parliament Licence v3.0. <a href="https://blog.tristanhotham.com/">More data studies on the blog</a>.</p>
+</footer>
+</div>
+<button class="btn theme" id="theme" aria-label="Switch light or dark theme">◐</button>
+<div class="tip" id="tip"></div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
+<script>
+const R = /*R*/;
+const ESC = { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" };
+const esc = s => String(s == null ? "" : s).replace(/[&<>"]/g, c => ESC[c]);
+const fmt = v => v == null ? "" : Math.round(v).toLocaleString("en-GB");
+const tip = document.getElementById("tip"), redraws = [];
+const isDark = () => document.documentElement.dataset.theme ? document.documentElement.dataset.theme === "dark" : matchMedia("(prefers-color-scheme: dark)").matches;
+const css = v => getComputedStyle(document.documentElement).getPropertyValue(v).trim();
+function showTip(h, x, y) { tip.innerHTML = h; tip.style.display = "block"; const w = tip.offsetWidth; x = Math.max(w / 2 + 8, Math.min(innerWidth - w / 2 - 8, x)); tip.style.left = x + scrollX + "px"; tip.style.top = y + scrollY + "px"; }
+function hideTip() { tip.style.display = "none"; }
+function hover(node, h) { node.style.cursor = "pointer"; node.setAttribute("tabindex", "0"); const s = () => { const r = node.getBoundingClientRect(); showTip(h, r.left + r.width / 2, r.top); }; node.addEventListener("pointerenter", s); node.addEventListener("pointerleave", hideTip); node.addEventListener("focus", s); node.addEventListener("blur", hideTip); }
+const NS = "http://www.w3.org/2000/svg";
+function el(t, a, p) { const e = document.createElementNS(NS, t); for (const k in a) e.setAttribute(k, a[k]); if (p) p.appendChild(e); return e; }
+function lbl(svg, x, y, t, c, a) { const e = el("text", { x, y, class: c || "lab", "text-anchor": a || "start" }, svg); e.textContent = t; return e; }
+function resp(box, render) { let last = 0; const go = (force) => { const w = Math.max(280, Math.round(box.clientWidth)); if (!force && Math.abs(w - last) < 4) return; last = w; box.innerHTML = ""; render(w, w < 560); }; new ResizeObserver(() => go()).observe(box); go(); redraws.push(() => go(true)); }
+
+/* ===== colours ===== */
+const BANDS = [[10, "under 10 km"], [25, "10 to 25 km"], [50, "25 to 50 km"], [100, "50 to 100 km"], [200, "100 to 200 km"], [1e9, "200 km or more"]];
+const BCOL_L = ["#0B5E50", "#2F8F74", "#8CBF84", "#E3C66E", "#DE8B3E", "#A9432A"], BCOL_D = ["#5FD1B4", "#3FA88C", "#86B97E", "#D9BC63", "#E08F45", "#D0603F"];
+const ABROAD = () => isDark() ? "#B08AE0" : "#6A4A9C";
+const bcol = i => (isDark() ? BCOL_D : BCOL_L)[i];
+const FAMC = { CON: ["#0A60A8", "Conservative"], LAB: ["#D0262D", "Labour"], LIB: ["#F2A31B", "Liberal, Whig, Lib Dem"], IRN: ["#2E8B3E", "Irish nationalist"], LU: ["#7A9CC6", "Liberal Unionist"], SNP: ["#E6C619", "SNP"], PC: ["#3A8A5A", "Plaid Cymru"], ULS: ["#5A6E9C", "Ulster unionist"], SF: ["#22663A", "Sinn Féin"], PEEL: ["#9B7BB0", "Peelite"], ALLY: ["#6F8FA8", "National Liberal and allies"], GRN: ["#5DAA3C", "Green"], REF: ["#18B3C6", "Reform UK"], SPK: ["#888", "Speaker"], OTH: ["#999", "Other"], "": ["#BBB", "Unknown"] };
+function bandOf(km) { for (let i = 0; i < BANDS.length; i++) if (km < BANDS[i][0]) return i; return 5; }
+
+/* ===== map state ===== */
+let D = null, PLACES = null, lmap, rend, dotL, lineL2, selL, nameL, tiles = null, hills = null, natL = null;
+let ei = 48, mode = "dist", showLines = false, sel = null, playing = null;
+const yr = document.getElementById("yr");
+const LYDEF = { base: "light", hills: false, hillK: 45, names: true, nameLvl: 1, lines: true, lineK: 45, colour: 100 };
+let LY = Object.assign({}, LYDEF);
+try { const s = JSON.parse(localStorage.getItem("mpl_layers") || "null"); if (s) Object.assign(LY, s); } catch (e) {}
+function saveLY() { try { localStorage.setItem("mpl_layers", JSON.stringify(LY)); } catch (e) {} }
+
+function person(i) { return D.people[i]; }
+function rowColour(r) {
+  const p = person(r[1]);
+  if (mode === "party") return (FAMC[D.fams[r[2]]] || FAMC[""])[0];
+  if (p[2] == null) return null;
+  if (mode === "county") { if (r[4] == null) return p[4] === "A" ? ABROAD() : css("--none"); return r[4] ? bcol(0) : bcol(4); }
+  if (p[4] === "A") return ABROAD();
+  return bcol(bandOf(r[3]));
+}
+function pxPerKm() { const z = lmap.getZoom(); return Math.pow(2, z) * 256 / (40075 * Math.cos(54 * Math.PI / 180)); }
+function radius() { return Math.max(innerWidth < 600 ? 2.6 : 3.2, Math.min(11, 2.2 * pxPerKm())); }
+function offsets(rows) { const n = {}, k = {}; rows.forEach(r => n[r[0]] = (n[r[0]] || 0) + 1); return rows.map(r => { const c = n[r[0]]; const j = k[r[0]] = (k[r[0]] || 0) + 1; return c > 1 ? (j - (c + 1) / 2) : 0; }); }
+function draw() {
+  if (!lmap || !D) return;
+  dotL.clearLayers(); lineL2.clearLayers();
+  const rows = D.E[ei].rows, rad = radius(), off = offsets(rows), op = .25 + .75 * LY.colour / 100, kmpx = 1 / pxPerKm();
+  if (showLines) for (const r of rows) { const p = person(r[1]), s = D.seats[r[0]]; if (p[2] == null) continue; const c = rowColour(r);
+    L.polyline([[s[2], s[1]], [p[3], p[2]]], { renderer: rend, color: c || css("--none"), weight: 1.1, opacity: .45 * op, interactive: false }).addTo(lineL2); }
+  rows.forEach((r, i) => {
+    const s = D.seats[r[0]], c = rowColour(r), dx = off[i] * rad * 2.1 * kmpx / (111 * Math.cos(s[2] * Math.PI / 180));
+    const m = L.circleMarker([s[2], s[1] + dx], c ? { renderer: rend, radius: rad, stroke: true, color: css("--bg"), weight: .6, fillColor: c, fillOpacity: op }
+      : { renderer: rend, radius: rad * .85, stroke: true, color: css("--none"), weight: 1.4, fill: true, fillColor: css("--bg"), fillOpacity: .6 });
+    m.on("click", () => pick(i, true)); m.addTo(dotL);
+  });
+  document.getElementById("when").innerHTML = esc(D.elections[ei]);
+  legend(); summary(); if (sel != null) drawSel();
+}
+function legend() {
+  const L_ = document.getElementById("legend");
+  if (mode === "party") { const seen = {}; for (const r of D.E[ei].rows) seen[D.fams[r[2]]] = (seen[D.fams[r[2]]] || 0) + 1;
+    L_.innerHTML = Object.keys(seen).sort((a, b) => seen[b] - seen[a]).map(f => `<span><i style="background:${FAMC[f][0]}"></i>${esc(FAMC[f][1])} <b>${seen[f]}</b></span>`).join(""); return; }
+  if (mode === "county") { L_.innerHTML = `<span><i style="background:${bcol(0)}"></i>born in the seat's county</span><span><i style="background:${bcol(4)}"></i>born in another county</span><span><i style="background:${ABROAD()}"></i>born abroad</span><span><i style="background:${css("--none")}"></i>no county test (Irish seat before 1922)</span><span><i class="o"></i>birthplace unknown</span>`; return; }
+  L_.innerHTML = BANDS.map((b, i) => `<span><i style="background:${bcol(i)}"></i>${b[1]}</span>`).join("") + `<span><i style="background:${ABROAD()}"></i>born abroad</span><span><i class="o"></i>birthplace unknown</span>`;
+}
+function summary() {
+  const s = R.byE[ei];
+  document.getElementById("sumline").innerHTML = `${esc(D.elections[ei])}: <b>${s.n}</b> MPs returned, <b>${s.coverage}%</b> with a known birthplace. Of those: <b>${s.same_county}%</b> born in the seat's county, <b>${s.local25}%</b> within 25 km, median <b>${fmt(s.median_km)} km</b>, <b>${s.london}%</b> born in London, <b>${s.abroad}%</b> abroad.`;
+}
+function drawSel() {
+  selL.clearLayers(); const r = D.E[ei].rows[sel]; if (!r) return; const p = person(r[1]), s = D.seats[r[0]];
+  L.circleMarker([s[2], s[1]], { radius: radius() + 5, color: css("--fg"), weight: 2.2, fill: false, interactive: false }).addTo(selL);
+  if (p[2] != null) {
+    L.polyline([[s[2], s[1]], [p[3], p[2]]], { color: css("--fg"), weight: 2.4, dashArray: "6 5", interactive: false }).addTo(selL);
+    L.circleMarker([p[3], p[2]], { radius: 6, color: css("--fg"), weight: 2, fillColor: rowColour(r) || css("--none"), fillOpacity: 1, interactive: false }).addTo(selL);
+    L.marker([p[3], p[2]], { interactive: false, keyboard: false, icon: L.divIcon({ className: "bpl", html: "born " + esc(p[1]), iconSize: null, iconAnchor: [-9, 6] }) }).addTo(selL);
+  }
+}
+function srcText(c) { return { w: "Wikidata place of birth", i: "English Wikipedia infobox", t: "English Wikipedia article text", c: "named only as a county or country, too coarse to place" }[c] || "not found"; }
+function bornText(r) {
+  const p = person(r[1]);
+  if (p[2] == null) return p[5] === "c" ? `born in ${esc(p[1])} (too coarse to place)` : "birthplace not known";
+  const d = p[4] === "A" ? "abroad" : `${fmt(r[3])} km from the seat point`;
+  return `born in ${esc(p[1])}, ${d}` + (r[4] === 1 ? ", same county" : r[4] === 0 ? ", another county" : "");
+}
+function pick(i, fromMap) {
+  sel = i; const r = D.E[ei].rows[i], p = person(r[1]), s = D.seats[r[0]];
+  drawSel();
+  const hist = [];
+  D.E.forEach((E, k) => E.rows.forEach((x, j) => { if (x[0] === r[0]) hist.push([k, j, x]); }));
+  const first = hist.length ? hist[0][0] : ei, last = hist.length ? hist[hist.length - 1][0] : ei;
+  const cells = []; for (let k = first; k <= last; k++) { const h = hist.filter(x => x[0] === k); cells.push([k, h]); }
+  const strip = cells.map(([k, h]) => { const x = h[0]; const c = x ? (rowColour(x[2]) || css("--none")) : "transparent";
+    const t = h.map(y => person(y[2][1])[0]).join(" and ");
+    return `<div data-k="${k}" data-j="${x ? x[1] : -1}" class="${k === ei ? "cur" : ""}" style="background:${c}" title="${esc(D.elections[k] + (t ? ": " + t : ""))}"></div>`; }).join("");
+  const seen = new Map(); hist.forEach(([k, j, x]) => { const key = x[1]; if (!seen.has(key)) seen.set(key, { x, ks: [] }); seen.get(key).ks.push(D.elections[k]); });
+  const rowsH = [...seen.values()].map(o => { const q = person(o.x[1]); const yrs = o.ks.length > 2 ? `${o.ks[0]} to ${o.ks[o.ks.length - 1]} (${o.ks.length})` : o.ks.join(", ");
+    return `<tr class="${o.x[1] === r[1] ? "cur" : ""}"><td><span class="sw" style="background:${rowColour(o.x) || "transparent"};border:1px solid var(--border)"></span>${esc(q[0])}<br><span style="color:var(--muted)">${esc(FAMC[D.fams[o.x[2]]][1])} · ${esc(yrs)}</span></td><td>${q[2] == null ? (q[5] === "c" ? esc(q[1]) + " (coarse)" : "not known") : esc(q[1])}</td><td class="num">${q[2] == null ? "" : q[4] === "A" ? "abroad" : fmt(o.x[3]) + " km"}</td></tr>`; }).join("");
+  document.getElementById("info").innerHTML = `<p class="t">${esc(s[0])}</p><p class="c">${esc([s[4], s[3]].filter(Boolean).join(", "))} · ${esc(D.elections[ei])}</p>
+<p style="margin:0 0 8px"><b>${esc(p[0])}</b> (${esc(FAMC[D.fams[r[2]]][1])}), ${bornText(r)}.<br><span style="color:var(--muted)">Birthplace source: ${srcText(p[5])}.</span></p>
+<p style="margin:10px 0 2px;color:var(--muted)">This seat through time (${esc(D.elections[first])} to ${esc(D.elections[last])}); tap a bar to jump</p>
+<div class="strip">${strip}</div>
+<div class="tw"><table><tbody>${rowsH}</tbody></table></div>
+<p style="margin:6px 0 0;color:var(--muted);font-size:12px">A seat here is one Wikidata constituency item; a constituency abolished and later recreated may appear as two.</p>`;
+  document.querySelectorAll("#info .strip div").forEach(d => d.onclick = () => { const j = +d.dataset.j; if (j < 0) return; stop(); ei = +d.dataset.k; yr.value = ei; draw(); pick(j); });
+  if (!fromMap) { showMap(); }
+}
+function setYear(i) {
+  let keep = null; if (sel != null) keep = D.E[ei].rows[sel][0];
+  ei = i; yr.value = i; sel = null; selL && selL.clearLayers();
+  if (keep != null) { const j = D.E[ei].rows.findIndex(r => r[0] === keep); if (j >= 0) sel = j; }
+  draw(); if (sel != null) pick(sel, true);
+}
+function stop() { if (playing) { clearInterval(playing); playing = null; document.getElementById("play").textContent = "▶ Play"; } }
+function initMap() {
+  if (!window.L) { document.getElementById("lmap").innerHTML = '<p style="padding:16px">The map library did not load.</p>'; return; }
+  lmap = L.map("lmap", { preferCanvas: true, zoomSnap: .5, minZoom: 4.5, maxZoom: 12, scrollWheelZoom: false, attributionControl: true });
+  lmap.fitBounds([[49.9, -10.4], [58.9, 1.8]], { padding: innerWidth < 600 ? [0, 0] : [6, 6] });
+  lmap.attributionControl.setPrefix('<a href="https://leafletjs.com">Leaflet</a>');
+  lmap.createPane("land").style.zIndex = 250; lmap.createPane("hill").style.zIndex = 260; lmap.createPane("lines").style.zIndex = 380;
+  rend = L.canvas({ padding: .5, tolerance: 4 });
+  lineL2 = L.layerGroup().addTo(lmap); dotL = L.layerGroup().addTo(lmap); selL = L.layerGroup().addTo(lmap); nameL = L.layerGroup();
+  initLayers();
+  lmap.on("zoomend", () => { draw(); placeNames(); });
+  lmap.on("moveend", placeNames);
+  lmap.on("click focus", () => lmap.scrollWheelZoom.enable());
+  lmap.getContainer().addEventListener("mouseleave", () => lmap.scrollWheelZoom.disable());
+  fetch("data/nations.geojson").then(r => r.json()).then(gj => { natL = gj; applyLayers(); });
+  fetch("data/counties.geojson").then(r => r.json()).then(gj => { ctyG = gj; applyLayers(); });
+  fetch("data/page/places.json").then(r => r.json()).then(p => { PLACES = p; placeNames(); });
+  redraws.push(() => { applyLayers(); draw(); });
+}
+/* ===== map layers panel ===== */
+let landL = null, lineL = null, ctyL = null, ctyG = null;
+function tileUrl() { return `https://server.arcgisonline.com/ArcGIS/rest/services/Canvas/World_${LY.base === "dark" || (LY.base === "auto" && isDark()) ? "Dark" : "Light"}_Gray_Base/MapServer/tile/{z}/{y}/{x}`; }
+function initLayers() {
+  const Ctl = L.Control.extend({ options: { position: "topright" }, onAdd() {
+    const d = L.DomUtil.create("div"); L.DomEvent.disableClickPropagation(d); L.DomEvent.disableScrollPropagation(d);
+    d.innerHTML = `<button class="lyrBtn" aria-expanded="false" aria-controls="lyrPanel">Map layers</button>
+<div class="lyrPanel" id="lyrPanel" hidden>
+ <div class="row"><label>Base map</label><div class="sub"><select id="lyBase" aria-label="Base map"><option value="light">Light grey</option><option value="dark">Dark grey</option><option value="none">Plain land</option></select></div></div>
+ <div class="row"><label><input type="checkbox" id="lyHills"> Hills</label><div class="sub"><span>strength</span><input type="range" id="lyHillK" min="10" max="100" step="5" aria-label="Hill shading strength"></div></div>
+ <div class="row"><label><input type="checkbox" id="lyNames"> Place names</label><div class="sub"><span>how many</span><select id="lyNameLvl" aria-label="How many place names"><option value="0">Cities only</option><option value="1">Cities and towns</option><option value="2">All towns when zoomed in</option></select></div></div>
+ <div class="row"><label><input type="checkbox" id="lyLines"> Coast, borders, counties</label><div class="sub"><span>strength</span><input type="range" id="lyLineK" min="10" max="100" step="5" aria-label="Coast and border strength"></div></div>
+ <div class="row"><label style="font-weight:600">Dot colour</label><div class="sub"><span>strength</span><input type="range" id="lyColour" min="25" max="100" step="5" aria-label="Dot colour strength"></div></div>
+ <button class="reset" id="lyReset">Reset layers</button>
+</div>`;
+    return d; } });
+  lmap.addControl(new Ctl());
+  const q = id => document.getElementById(id), btn = lmap.getContainer().querySelector(".lyrBtn"), pan = q("lyrPanel");
+  btn.onclick = () => { const o = pan.hidden; pan.hidden = !o; btn.setAttribute("aria-expanded", o); };
+  const sync = () => { q("lyBase").value = LY.base; q("lyHills").checked = LY.hills; q("lyHillK").value = LY.hillK; q("lyNames").checked = LY.names; q("lyNameLvl").value = LY.nameLvl; q("lyLines").checked = LY.lines; q("lyLineK").value = LY.lineK; q("lyColour").value = LY.colour; };
+  const on = (id, ev, f) => q(id).addEventListener(ev, e => { f(e.target); saveLY(); applyLayers(); });
+  on("lyBase", "change", t => LY.base = t.value);
+  on("lyHills", "change", t => LY.hills = t.checked); on("lyHillK", "input", t => { LY.hillK = +t.value; LY.hills = true; q("lyHills").checked = true; });
+  on("lyNames", "change", t => LY.names = t.checked); on("lyNameLvl", "change", t => { LY.nameLvl = +t.value; LY.names = true; q("lyNames").checked = true; });
+  on("lyLines", "change", t => LY.lines = t.checked); on("lyLineK", "input", t => { LY.lineK = +t.value; LY.lines = true; q("lyLines").checked = true; });
+  on("lyColour", "input", t => { LY.colour = +t.value; draw(); });
+  q("lyReset").onclick = () => { Object.assign(LY, LYDEF); saveLY(); sync(); applyLayers(); draw(); };
+  sync(); applyLayers();
+}
+function applyLayers() {
+  if (!lmap) return;
+  if (LY.base !== "none") { if (!tiles) tiles = L.tileLayer(tileUrl(), { attribution: "Tiles &copy; Esri", maxZoom: 16 }); tiles.setUrl(tileUrl()); tiles.addTo(lmap); } else if (tiles) tiles.remove();
+  if (natL) {
+    if (landL) landL.remove(); if (lineL) lineL.remove();
+    landL = L.geoJSON(natL, { pane: "land", interactive: false, style: () => ({ stroke: false, fillColor: css("--land"), fillOpacity: LY.base === "none" ? 1 : 0 }) }).addTo(lmap);
+    if (ctyL) ctyL.remove();
+    if (LY.lines && ctyG) ctyL = L.geoJSON(ctyG, { pane: "lines", interactive: false, style: () => ({ color: css("--muted"), weight: .6, opacity: .08 + LY.lineK / 100 * .35, dashArray: "3 3", fill: false }) }).addTo(lmap);
+    if (LY.lines) lineL = L.geoJSON(natL, { pane: "lines", interactive: false, style: () => ({ color: css("--fg"), weight: .9, opacity: .12 + LY.lineK / 100 * .6, fill: false }) }).addTo(lmap);
+  }
+  if (LY.hills) { if (!hills) hills = L.tileLayer("https://server.arcgisonline.com/ArcGIS/rest/services/Elevation/World_Hillshade/MapServer/tile/{z}/{y}/{x}", { pane: "hill", attribution: "Hill shading &copy; Esri", maxZoom: 13 }); hills.setOpacity(LY.hillK / 100 * .6); hills.addTo(lmap); } else if (hills) hills.remove();
+  if (LY.names) nameL.addTo(lmap); else nameL.remove();
+  placeNames();
+}
+const MAJOR = new Set(["London", "Birmingham", "Manchester", "Glasgow", "Edinburgh", "Cardiff", "Belfast", "Dublin", "Liverpool", "Leeds"]);
+function placeNames() {
+  if (!lmap || !nameL || !PLACES) return;
+  nameL.clearLayers(); if (!LY.names) return;
+  const z = lmap.getZoom(), bb = lmap.getBounds().pad(.05), lvl = LY.nameLvl;
+  const minR = lvl === 0 ? 3 : lvl === 1 ? (z >= 7.5 ? 2 : 3) : (z >= 6.5 ? 2 : 3);
+  const cand = PLACES.filter(p => (p[3] >= minR || MAJOR.has(p[0])) && bb.contains([p[2], p[1]])).sort((a, b) => (MAJOR.has(b[0]) - MAJOR.has(a[0])) || b[3] - a[3]);
+  const boxes = [], out = [];
+  for (const c of cand) { if (z < 6 && !MAJOR.has(c[0])) continue;
+    const pt = lmap.latLngToContainerPoint([c[2], c[1]]), bx = [pt.x - 4, pt.y - 8, pt.x + 10 + c[0].length * 6.8, pt.y + 7];
+    if (boxes.some(o => bx[0] < o[2] && bx[2] > o[0] && bx[1] < o[3] && bx[3] > o[1])) continue;
+    boxes.push(bx); out.push(c); if (out.length >= 140) break; }
+  for (const c of out) L.marker([c[2], c[1]], { interactive: false, keyboard: false, icon: L.divIcon({ className: "city" + (c[3] === 2 ? " r2" : ""), html: `<i></i>${esc(c[0])}`, iconSize: null, iconAnchor: [3, 6] }) }).addTo(nameL);
+}
+/* ===== controls ===== */
+document.querySelectorAll("[data-mode]").forEach(b => b.onclick = () => { mode = b.dataset.mode; document.querySelectorAll("[data-mode]").forEach(x => x.setAttribute("aria-pressed", x === b)); draw(); if (sel != null) pick(sel, true); });
+document.getElementById("lines").onclick = e => { showLines = !showLines; e.currentTarget.setAttribute("aria-pressed", showLines); draw(); };
+yr.oninput = () => { stop(); setYear(+yr.value); };
+document.getElementById("prev").onclick = () => { stop(); if (ei > 0) setYear(ei - 1); };
+document.getElementById("next").onclick = () => { stop(); if (ei < D.E.length - 1) setYear(ei + 1); };
+document.getElementById("play").onclick = () => { if (playing) return stop(); if (ei >= D.E.length - 1) setYear(0); document.getElementById("play").textContent = "❚❚ Pause";
+  playing = setInterval(() => { if (ei >= D.E.length - 1) { stop(); return; } setYear(ei + 1); }, 1100); };
+function showMap() { const m = document.getElementById("lmap"), r = m.getBoundingClientRect(); if (r.top < 0 || r.bottom > innerHeight) document.querySelector(".timebar").scrollIntoView({ behavior: "smooth", block: "start" }); }
+/* stories */
+document.getElementById("stories").innerHTML = R.stories.map((s, i) => `<button data-s="${i}"><b>${esc(s.t)}</b>${esc(s.d)}</button>`).join("");
+document.querySelectorAll("[data-s]").forEach(b => b.onclick = () => { if (!D) return; const s = R.stories[+b.dataset.s]; stop(); mode = s.mode || "dist"; showLines = !!s.lines;
+  document.getElementById("lines").setAttribute("aria-pressed", showLines);
+  document.querySelectorAll("[data-mode]").forEach(x => x.setAttribute("aria-pressed", x.dataset.mode === mode)); sel = null; selL.clearLayers();
+  ei = D.elections.indexOf(s.e); yr.value = ei; if (lmap) lmap.fitBounds(s.b, { animate: false }); draw(); document.getElementById("info").innerHTML = `<p class="t">${esc(s.t)}</p><p style="margin:0">${esc(s.long)}</p>`; showMap(); });
+/* search */
+(() => {
+  const q = document.getElementById("q"), sug = document.getElementById("sug");
+  const norm = s => s.toLowerCase().normalize("NFD").replace(/[̀-ͯ]/g, "").replace(/[^a-z0-9 ]/g, " ").replace(/\s+/g, " ").trim();
+  let list = [], s = -1;
+  function place() { const r = q.getBoundingClientRect(); sug.style.left = r.left + "px"; sug.style.top = r.bottom + "px"; sug.style.width = Math.max(220, r.width) + "px"; }
+  function go(p) { sug.style.display = "none"; q.setAttribute("aria-expanded", "false"); q.value = p[0]; q.blur(); if (!D) return;
+    lmap.setView([p[2], p[1]], 9, { animate: false });
+    let best = -1, bd = 1e9; D.E[ei].rows.forEach((r, i) => { const t = D.seats[r[0]]; const d = (t[2] - p[2]) ** 2 + ((t[1] - p[1]) * Math.cos(p[2] * Math.PI / 180)) ** 2; if (d < bd) { bd = d; best = i; } });
+    if (best >= 0) pick(best, false); showMap(); }
+  function render() { place(); sug.innerHTML = list.map((p, i) => `<li role="option" aria-selected="${i === s}" data-i="${i}">${esc(p[0])} <span>${esc(p[4] || "")}</span></li>`).join(""); sug.style.display = list.length ? "block" : "none"; q.setAttribute("aria-expanded", list.length > 0); }
+  q.addEventListener("input", () => { if (!PLACES) return; const t = norm(q.value); s = -1; if (t.length < 2) { list = []; render(); return; }
+    list = PLACES.filter(p => norm(p[0]).startsWith(t)).sort((x, y) => y[3] - x[3]).slice(0, 8); render(); });
+  q.addEventListener("keydown", e => { if (!list.length) return; if (e.key === "ArrowDown") { s = Math.min(list.length - 1, s + 1); render(); e.preventDefault(); } else if (e.key === "ArrowUp") { s = Math.max(0, s - 1); render(); e.preventDefault(); } else if (e.key === "Enter") { go(list[Math.max(0, s)]); e.preventDefault(); } else if (e.key === "Escape") { list = []; render(); } });
+  sug.addEventListener("click", e => { const li = e.target.closest("li[data-i]"); if (li) go(list[+li.dataset.i]); e.stopPropagation(); });
+  document.addEventListener("click", e => { if (e.target !== q) { sug.style.display = "none"; q.setAttribute("aria-expanded", "false"); } });
+  addEventListener("scroll", () => { if (sug.style.display === "block") place(); }, { passive: true });
+})();
+
+/* ===== charts ===== */
+const EL = R.elections, EY = R.years;
+function axesY(svg, x0, x1, y, ymax, step, W) { for (let v = 0; v <= ymax; v += step) { const yy = y(v); el("line", { x1: x0, x2: x1, y1: yy, y2: yy, stroke: css("--rule"), "stroke-width": 1 }, svg); lbl(svg, x0 - 6, yy + 4, v + "%", "lab m s", "end"); } }
+function timeX(W, m) { const a = 1832, b = 2024; return y => m.l + (y - a) / (b - a) * (W - m.l - m.r); }
+function yearTicks(svg, x, H, m, sm) { (sm ? [1840, 1880, 1920, 1960, 2000] : [1840, 1860, 1880, 1900, 1920, 1940, 1960, 1980, 2000, 2020]).forEach(t => lbl(svg, x(t), H - m.b + 18, t, "lab m s", "middle")); }
+function lineSeries(svg, x, y, ys, vals, col, w, dash) { let d = ""; vals.forEach((v, i) => { if (v == null) return; d += (d ? "L" : "M") + x(ys[i]).toFixed(1) + "," + y(v).toFixed(1); }); el("path", { d, fill: "none", stroke: col, "stroke-width": w || 2.4, "stroke-dasharray": dash || "" }, svg); }
+function dotsHover(svg, x, y, ys, vals, col, f) { vals.forEach((v, i) => { if (v == null) return; const c = el("circle", { cx: x(ys[i]), cy: y(v), r: 3.2, fill: col }, svg); hover(c, f(i)); }); }
+function legendHTML(id, items) { document.getElementById(id).innerHTML = items.map(([c, t, o]) => `<span><i style="background:${c};${o ? "opacity:" + o : ""}"></i>${esc(t)}</span>`).join(""); }
+
+function cLong() { resp(document.getElementById("c_long"), (W, sm) => {
+  const H = sm ? 280 : 340, m = { l: 44, r: 12, t: 12, b: 30 }, svg = el("svg", { viewBox: `0 0 ${W} ${H}` }, document.getElementById("c_long"));
+  const x = timeX(W, m), ymax = 80, y = v => H - m.b - v / ymax * (H - m.t - m.b);
+  axesY(svg, m.l, W - m.r, y, ymax, 20); yearTicks(svg, x, H, m, sm);
+  let d = ""; R.byE.forEach((s, i) => { d += (i ? "L" : "M") + x(EY[i]) + "," + y(R.bounds[i][1]); }); for (let i = R.byE.length - 1; i >= 0; i--) d += "L" + x(EY[i]) + "," + y(R.bounds[i][0]); d += "Z";
+  el("path", { d, fill: css("--hot"), "fill-opacity": .13, stroke: "none" }, svg);
+  lineSeries(svg, x, y, EY, R.byE.map(s => s.local25), css("--gold"), 2, "5 4");
+  lineSeries(svg, x, y, EY, R.byE.map(s => s.same_county), css("--hot"), 2.8);
+  dotsHover(svg, x, y, EY, R.byE.map(s => s.same_county), css("--hot"), i => `<b>${EL[i]}</b><br>same county ${R.byE[i].same_county}% (range ${R.bounds[i][0]} to ${R.bounds[i][1]}%)<br>within 25 km ${R.byE[i].local25}%<br>known birthplace ${R.byE[i].coverage}%`);
+  legendHTML("c_long_leg", [[css("--hot"), "born in the seat's county"], [css("--gold"), "born within 25 km (dashed)"], [css("--hot"), "possible range for the county share", .25]]);
+}); }
+function cCov() { resp(document.getElementById("c_cov"), (W, sm) => {
+  const H = sm ? 200 : 220, m = { l: 44, r: 12, t: 10, b: 30 }, svg = el("svg", { viewBox: `0 0 ${W} ${H}` }, document.getElementById("c_cov"));
+  const x = timeX(W, m), y = v => H - m.b - v / 100 * (H - m.t - m.b), bw = Math.max(2, (W - m.l - m.r) / 49 * .55);
+  axesY(svg, m.l, W - m.r, y, 100, 25); yearTicks(svg, x, H, m, sm);
+  R.byE.forEach((s, i) => { const r = el("rect", { x: x(EY[i]) - bw / 2, y: y(s.coverage), width: bw, height: y(0) - y(s.coverage), fill: css("--hot"), opacity: .8 }, svg); hover(r, `<b>${EL[i]}</b><br>${s.known} of ${s.n} MPs placed (${s.coverage}%)`); });
+}); }
+function cNew() { resp(document.getElementById("c_new"), (W, sm) => {
+  const rows = R.eraNew, H = rows.length * 38 + 20, m = { l: sm ? 104 : 120, r: 70, t: 4 }, svg = el("svg", { viewBox: `0 0 ${W} ${H}` }, document.getElementById("c_new"));
+  const x = v => m.l + v / 60 * (W - m.l - m.r);
+  rows.forEach((s, i) => { const yy = m.t + i * 38; lbl(svg, m.l - 8, yy + 19, s.era, "lab", "end");
+    const r = el("rect", { x: m.l, y: yy + 6, width: x(s.local25) - m.l, height: 20, fill: i >= 5 ? css("--hot") : css("--none") }, svg);
+    hover(r, `<b>${s.era}</b><br>${s.known} new MPs placed of ${s.n}<br>within 25 km: ${s.local25}%<br>same county: ${s.same_county}%`);
+    lbl(svg, x(s.local25) + 6, yy + 21, s.local25 + "%", "lab b"); lbl(svg, W - 2, yy + 21, s.coverage + "% known", "lab m s", "end"); });
+}); }
+function cBands() { resp(document.getElementById("c_bands"), (W, sm) => {
+  const eras = R.eras, H = eras.length * 34 + 10, m = { l: sm ? 104 : 120, r: 6, t: 4 }, svg = el("svg", { viewBox: `0 0 ${W} ${H}` }, document.getElementById("c_bands"));
+  const cols = [0, 1, 2, 3, 4, 5, 5].map((b, i) => i === 6 ? "#7a2f1d" : bcol(b)).concat([ABROAD()]);
+  eras.forEach((e, i) => { const yy = m.t + i * 34; lbl(svg, m.l - 8, yy + 19, e, "lab", "end"); let x0 = m.l; const tot = R.bands[e].reduce((a, b) => a + (b || 0), 0);
+    R.bands[e].forEach((v, k) => { const w = (v || 0) / tot * (W - m.l - m.r); const r = el("rect", { x: x0, y: yy + 5, width: Math.max(0, w - .5), height: 22, fill: cols[k] }, svg); hover(r, `<b>${e}</b><br>${R.bandLabels[k]}: ${v}%`);
+      if (w > 30) lbl(svg, x0 + w / 2, yy + 20, Math.round(v), "lab s", "middle").setAttribute("style", "fill:#fff;font-weight:500"); x0 += w; }); });
+  legendHTML("c_bands_leg", R.bandLabels.map((t, k) => [cols[k], t]));
+}); }
+function cParty() { resp(document.getElementById("c_party"), (W, sm) => {
+  const eras = R.eras, H = sm ? 260 : 300, m = { l: 44, r: 12, t: 12, b: 34 }, svg = el("svg", { viewBox: `0 0 ${W} ${H}` }, document.getElementById("c_party"));
+  const x = i => m.l + (i + .5) / eras.length * (W - m.l - m.r), y = v => H - m.b - v / 60 * (H - m.t - m.b);
+  axesY(svg, m.l, W - m.r, y, 60, 20);
+  eras.forEach((e, i) => { const t = lbl(svg, x(i), H - m.b + 16, sm ? e.replace(" to ", "-").replace(/(\d\d)(\d\d)-(\d\d)(\d\d)/, "$1$2-$4") : e.replace(" to ", " to "), "lab m s", "middle"); if (!sm) t.textContent = e.replace(" to ", "-"); });
+  for (const f of ["CON", "LIB", "LAB", "SNP", "IRN"]) { const pts = eras.map(e => { const s = R.famEra.find(r => r.family === f && r.era === e); return s ? s.same_county : null; });
+    let d = ""; pts.forEach((v, i) => { if (v == null) { return; } d += (d ? "L" : "M") + x(i) + "," + y(v); }); el("path", { d, fill: "none", stroke: FAMC[f][0], "stroke-width": 2.6 }, svg);
+    pts.forEach((v, i) => { if (v == null) return; const c = el("circle", { cx: x(i), cy: y(v), r: 4, fill: FAMC[f][0] }, svg); const s = R.famEra.find(r => r.family === f && r.era === eras[i]); hover(c, `<b>${FAMC[f][1]}, ${eras[i]}</b><br>same county ${v}%<br>within 25 km ${s.local25}%<br>${s.known} placed of ${s.n}`); }); }
+  legendHTML("c_party_leg", ["CON", "LIB", "LAB", "SNP", "IRN"].map(f => [FAMC[f][0], FAMC[f][1]]));
+}); }
+function cRegion() { resp(document.getElementById("c_region"), (W, sm) => {
+  const rows = R.regions.slice().sort((a, b) => b.same_county - a.same_county), H = rows.length * 30 + 10, m = { l: sm ? 140 : 170, r: 40, t: 4 }, svg = el("svg", { viewBox: `0 0 ${W} ${H}` }, document.getElementById("c_region"));
+  const x = v => m.l + v / 100 * (W - m.l - m.r);
+  rows.forEach((s, i) => { const yy = m.t + i * 30; lbl(svg, m.l - 8, yy + 18, s.region, "lab", "end");
+    const r = el("rect", { x: m.l, y: yy + 5, width: x(s.same_county) - m.l, height: 18, fill: css("--hot") }, svg);
+    const c = el("rect", { x: x(s.london) - 1.5, y: yy + 2, width: 3, height: 24, fill: css("--gold") }, svg);
+    [r, c].forEach(n => hover(n, `<b>${s.region}</b><br>same county ${s.same_county}%<br>born in London ${s.london}%<br>within 25 km ${s.local25}%<br>${s.known} placed of ${s.n}`));
+    lbl(svg, x(Math.max(s.same_county, s.london)) + 6, yy + 18, s.same_county + "%", "lab b"); });
+  legendHTML("c_region_leg", [[css("--hot"), "born in the seat's county"], [css("--gold"), "born in London (tick)"]]);
+}); }
+function cLon() { resp(document.getElementById("c_lon"), (W, sm) => {
+  const H = sm ? 220 : 260, m = { l: 44, r: 12, t: 12, b: 30 }, svg = el("svg", { viewBox: `0 0 ${W} ${H}` }, document.getElementById("c_lon"));
+  const x = timeX(W, m), y = v => H - m.b - v / 40 * (H - m.t - m.b);
+  axesY(svg, m.l, W - m.r, y, 40, 10); yearTicks(svg, x, H, m, sm);
+  lineSeries(svg, x, y, EY, R.byE.map(s => s.london), css("--gold"), 2.6); lineSeries(svg, x, y, EY, R.byE.map(s => s.abroad), ABROAD(), 2.6);
+  dotsHover(svg, x, y, EY, R.byE.map(s => s.london), css("--gold"), i => `<b>${EL[i]}</b><br>born in London ${R.byE[i].london}%<br>born abroad ${R.byE[i].abroad}%`);
+  legendHTML("c_lon_leg", [[css("--gold"), "born in London"], [ABROAD(), "born abroad"]]);
+}); }
+function charts() { cLong(); cCov(); cNew(); cBands(); cParty(); cRegion(); cLon(); }
+charts();
+
+/* theme */
+document.getElementById("theme").onclick = () => { const d = isDark(); document.documentElement.dataset.theme = d ? "light" : "dark"; redraws.forEach(f => f()); };
+matchMedia("(prefers-color-scheme: dark)").addEventListener("change", () => redraws.forEach(f => f()));
+
+initMap();
+fetch("data/page/mps.json").then(r => r.json()).then(d => { D = d; ei = D.E.length - 1; yr.max = ei; yr.value = ei; draw(); });
+</script>
+<!-- map-fullscreen v1 -->
+<style id="mfs-style">
+.mfs-btn{position:absolute;top:10px;right:10px;z-index:1001;width:34px;height:34px;border:2px solid rgba(0,0,0,.25);border-radius:4px;background:#fff;color:#222;cursor:pointer;display:flex;align-items:center;justify-content:center;padding:0;box-shadow:0 1px 4px rgba(0,0,0,.2)}
+.mfs-btn:hover{background:#f2f2f2}
+.mfs-btn svg{width:18px;height:18px}
+.mfs-host.mfs-btn-left .mfs-btn{right:auto;left:54px}
+.mfs-fake{position:fixed!important;inset:0!important;width:100vw!important;height:100vh!important;height:100dvh!important;max-width:none!important;max-height:none!important;margin:0!important;z-index:100000!important;border-radius:0!important}
+html.mfs-lock,html.mfs-lock body{overflow:hidden!important}
+:fullscreen.mfs-host{width:100vw!important;height:100vh!important;max-width:none!important;max-height:none!important;margin:0!important;border-radius:0!important}
+</style>
+<script id="mfs-script">
+(function(){
+  var ICON_OPEN='<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M4 9V4h5M20 9V4h-5M4 15v5h5M20 15v5h-5"/></svg>';
+  var ICON_CLOSE='<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M9 4v5H4M15 4v5h5M9 20v-5H4M15 20v-5h5"/></svg>';
+  function poke(){setTimeout(function(){window.dispatchEvent(new Event('resize'));},60);setTimeout(function(){window.dispatchEvent(new Event('resize'));},400);}
+  function realFS(){return document.fullscreenElement||document.webkitFullscreenElement;}
+  function add(el){
+    if(el.__mfs)return; el.__mfs=1;
+    var cs=getComputedStyle(el); if(cs.position==='static')el.style.position='relative';
+    el.classList.add('mfs-host');
+    // avoid clashing with a top-right Leaflet control (e.g. "Map layers")
+    var tr=el.querySelector('.leaflet-top.leaflet-right');
+    if(tr&&tr.children.length){ el.classList.add('mfs-btn-left'); }
+    var b=document.createElement('button'); b.type='button'; b.className='mfs-btn';
+    b.title='Full screen map'; b.setAttribute('aria-label','Full screen map'); b.innerHTML=ICON_OPEN;
+    ['click','dblclick','mousedown','touchstart','wheel'].forEach(function(t){b.addEventListener(t,function(e){e.stopPropagation();},{passive:t!=='click'});});
+    function setIcon(on){b.innerHTML=on?ICON_CLOSE:ICON_OPEN;b.title=on?'Exit full screen':'Full screen map';b.setAttribute('aria-label',b.title);}
+    function exitFake(){el.classList.remove('mfs-fake');document.documentElement.classList.remove('mfs-lock');setIcon(false);poke();}
+    b.addEventListener('click',function(e){
+      e.preventDefault();
+      if(el.classList.contains('mfs-fake')){exitFake();return;}
+      if(realFS()){(document.exitFullscreen||document.webkitExitFullscreen).call(document);return;}
+      var req=el.requestFullscreen||el.webkitRequestFullscreen;
+      if(req){ try{ var p=req.call(el); if(p&&p.catch)p.catch(function(){el.classList.add('mfs-fake');document.documentElement.classList.add('mfs-lock');setIcon(true);poke();}); }catch(err){el.classList.add('mfs-fake');document.documentElement.classList.add('mfs-lock');setIcon(true);poke();} }
+      else { el.classList.add('mfs-fake');document.documentElement.classList.add('mfs-lock');setIcon(true);poke(); }
+    });
+    document.addEventListener('keydown',function(e){if(e.key==='Escape'&&el.classList.contains('mfs-fake'))exitFake();});
+    ['fullscreenchange','webkitfullscreenchange'].forEach(function(t){document.addEventListener(t,function(){setIcon(realFS()===el);poke();});});
+    el.appendChild(b);
+  }
+  function scan(){
+    var els=document.querySelectorAll('[data-fullscreen-map], .leaflet-container, .maplibregl-map, .mapboxgl-map');
+    els.forEach(function(el){
+      if(el.closest('.mfs-host')&&!el.classList.contains('mfs-host'))return;
+      var r=el.getBoundingClientRect(); if(r.width<200||r.height<150)return;
+      add(el);
+    });
+  }
+  function start(){scan(); var n=0; var t=setInterval(function(){scan(); if(++n>20)clearInterval(t);},500);}
+  if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',start); else start();
+})();
+</script>
+<!-- /map-fullscreen -->
+
+</body>
+</html>
